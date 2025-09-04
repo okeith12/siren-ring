@@ -1,10 +1,12 @@
 import SwiftUI
 import UserNotifications
 
+/// Main view displaying SIREN Ring connection status and emergency contacts management
 struct ContentView: View {
     @StateObject private var bluetoothManager = BluetoothManager()
     @StateObject private var emergencyManager = EmergencyManager.shared
     @State private var showingContactsSheet = false
+    @State private var showingShareSheet = false
     
     var body: some View {
         NavigationView {
@@ -75,8 +77,18 @@ struct ContentView: View {
                         Text("Emergency Contacts")
                             .font(.headline)
                         Spacer()
-                        Button("Add") {
-                            showingContactsSheet = true
+                        HStack(spacing: 10) {
+                            Button("Share") {
+                                showingShareSheet = true
+                            }
+                            .buttonStyle(.bordered)
+                            .controlSize(.small)
+                            
+                            Button("Add") {
+                                showingContactsSheet = true
+                            }
+                            .buttonStyle(.borderedProminent)
+                            .controlSize(.small)
                         }
                     }
                     
@@ -90,14 +102,20 @@ struct ContentView: View {
                                 VStack(alignment: .leading) {
                                     Text(contact.name)
                                         .fontWeight(.medium)
-                                    Text(contact.phoneNumber)
-                                        .font(.caption)
-                                        .foregroundColor(.secondary)
+                                    HStack {
+                                        Text("Device: \(String(contact.appID.prefix(8)))...")
+                                            .font(.caption)
+                                            .foregroundColor(.secondary)
+                                        Image(systemName: "bell.badge")
+                                            .font(.caption)
+                                            .foregroundColor(.blue)
+                                    }
                                 }
                                 Spacer()
                             }
                             .padding(.vertical, 4)
                         }
+                        .onDelete(perform: deleteContact)
                     }
                 }
                 .padding()
@@ -111,13 +129,25 @@ struct ContentView: View {
             .sheet(isPresented: $showingContactsSheet) {
                 AddContactView()
             }
+            .sheet(isPresented: $showingShareSheet) {
+                ShareContactView()
+            }
         }
         .onAppear {
             requestNotificationPermission()
         }
     }
     
+    /// Requests notification permission from the user
     private func requestNotificationPermission() {
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { _, _ in }
+    }
+    
+    /// Deletes emergency contact at specified index
+    /// - Parameter offsets: IndexSet containing indices to delete
+    private func deleteContact(at offsets: IndexSet) {
+        for index in offsets {
+            emergencyManager.removeEmergencyContact(at: index)
+        }
     }
 }

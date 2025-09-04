@@ -1,4 +1,0 @@
-<key>NSBluetoothAlwaysUsageDescription</key>
-<string>SIREN Ring needs Bluetooth to receive emergency alerts</string>
-<key>NSLocationWhenInUseUsageDescription</key>
-<string>SIREN Ring needs location to send emergency location in alerts</string>
