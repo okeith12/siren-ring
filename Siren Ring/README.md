@@ -1,6 +1,6 @@
 # SIREN Ring Emergency System
 
-A SwiftUI-based iOS application that connects to a SIREN Ring device via Bluetooth to provide emergency alerting capabilities through push notifications and SMS.
+A SwiftUI-based iOS application that connects to a SIREN Ring device via Bluetooth to provide emergency alerting capabilities through push notifications.
 
 ## Overview
 
@@ -22,14 +22,12 @@ SIREN Ring is an emergency alert system that consists of:
 - Automatic alert distribution to all registered emergency contacts
 
 ### 👥 Contact Management
-- Add emergency contacts with phone numbers
-- Support for both app-enabled contacts (push notifications) and SMS-only contacts
+- Add emergency contacts using 6-digit authentication codes
+- Support for push notification delivery to contacts with the app
 - Swipe-to-delete functionality for contact management
-- Visual indicators for contacts with app installed
 
 ### 📱 Push Notifications
 - Priority delivery to contacts with the SIREN Ring app installed
-- SMS fallback for contacts without the app
 - Critical alert sound and badge notifications
 
 ## Project Structure
@@ -63,7 +61,6 @@ Siren Ring/
 ### Notification System
 - Local notifications for device alerts
 - Push notification delivery to contacts with app ID
-- SMS fallback via `MessageUI` framework
 - Critical sound alerts for emergency situations
 
 ## Usage
@@ -71,8 +68,7 @@ Siren Ring/
 ### Initial Setup
 1. Launch the SIREN Ring app
 2. Grant notification permissions when prompted
-3. Add emergency contacts using the "Add" button
-4. For contacts with the app, provide their App ID for push notifications
+3. Add emergency contacts using 6-digit authentication codes from their devices
 
 ### Connecting Your Ring
 1. Ensure Bluetooth is enabled on your device
@@ -83,29 +79,20 @@ Siren Ring/
 ### Emergency Activation
 1. When the SIREN Ring is activated, the app receives the emergency signal
 2. A critical alert notification appears on your device
-3. All emergency contacts are notified via:
-   - Push notifications (for contacts with the app)
-   - SMS messages (for contacts without the app)
+3. All emergency contacts are notified via push notifications
 
 ## Requirements
 
 - iOS 14.0+
 - Bluetooth Low Energy capable device
 - Notification permissions
-- Optional: SMS permissions for fallback messaging
 
 ## Emergency Contact Model
 
-The `EmergencyContact` model supports two types of contacts:
+The `EmergencyContact` model stores contact information for push notifications:
 
-### SMS-Only Contacts
 ```swift
-EmergencyContact(name: "John Doe", phoneNumber: "+1234567890")
-```
-
-### App-Enabled Contacts
-```swift
-EmergencyContact(name: "Jane Doe", phoneNumber: "+1234567890", appID: "unique-app-id")
+EmergencyContact(name: "Jane Doe", appID: "unique-device-token")
 ```
 
 ## Development Notes

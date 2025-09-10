@@ -34,7 +34,7 @@ class EmergencyManager: ObservableObject {
     /// Sends HTTP request to Go server with emergency data
     private func sendEmergencyToServer() {
         // TODO: Replace with your actual Go server URL
-        let serverURL = "https://your-go-server.com/api/emergency"
+        let serverURL = "https://localhost:8443/api/emergency"
         
         guard let url = URL(string: serverURL) else {
             print("Invalid server URL")
@@ -78,13 +78,15 @@ class EmergencyManager: ObservableObject {
     /// - Returns: Dictionary containing emergency data
     private func createEmergencyPayload() -> [String: Any] {
         let timestamp = ISO8601DateFormatter().string(from: Date())
-        let deviceTokens = emergencyContacts.map { $0.appID }
+        let deviceTokens = emergencyContacts.compactMap { $0.appID }
+        let phoneNumbers = emergencyContacts.compactMap { $0.phoneNumber }
         
         return [
             "emergency_type": "siren_ring_activation",
             "timestamp": timestamp,
-//            "user_id": UIDevice.current.identifierForVendor?.uuidString ?? "unknown",
+            "user_id": UIDevice.current.identifierForVendor?.uuidString ?? "unknown",
             "device_tokens": deviceTokens,
+            "phone_numbers": phoneNumbers,
             "message": "EMERGENCY ALERT - SIREN Ring activated. Please check on me immediately.",
             "priority": "critical"
             // TODO: Add location when implemented

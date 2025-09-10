@@ -2,7 +2,7 @@ import SwiftUI
 
 /// View for generating authentication codes to share with emergency contact requesters
 struct ShareContactView: View {
-    @StateObject private var authManager = EmergencyContactAuth.shared
+    @StateObject private var authManager = ContactManager.shared
     @Environment(\.presentationMode) var presentationMode
     @State private var showingCopiedAlert = false
     
@@ -75,7 +75,7 @@ struct ShareContactView: View {
                             VStack(alignment: .leading, spacing: 8) {
                                 Label("Code expires in 10 minutes", systemImage: "clock")
                                 Label("Share code with the person", systemImage: "square.and.arrow.up")
-                                Label("They enter it to add you", systemImage: "person.badge.plus")
+                                Label("They tap 'Add' and enter your code", systemImage: "person.badge.plus")
                             }
                             .font(.subheadline)
                             .foregroundColor(.secondary)

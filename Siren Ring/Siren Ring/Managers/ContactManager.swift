@@ -1,9 +1,10 @@
 import Foundation
 import UserNotifications
+import UIKit
 
 /// Handles authentication and registration of emergency contacts via 6-digit codes
-class EmergencyContactAuth: ObservableObject {
-    static let shared = EmergencyContactAuth()
+class ContactManager: ObservableObject {
+    static let shared = ContactManager()
     
     @Published var currentCode: String = ""
     @Published var isCodeActive: Bool = false
@@ -78,7 +79,7 @@ class EmergencyContactAuth: ObservableObject {
         }
         
         // TODO: Replace with your actual Go server URL
-        let serverURL = "https://your-go-server.com/api/auth-code"
+        let serverURL = "https://localhost:8443/api/auth-code"
         
         guard let url = URL(string: serverURL) else {
             print("Invalid server URL")
@@ -132,8 +133,8 @@ class EmergencyContactAuth: ObservableObject {
     ///   - code: 6-digit authentication code
     ///   - completion: Callback with contact name and device token
     static func lookupContactByCode(_ code: String, completion: @escaping (String?, String?) -> Void) {
-        // TODO: Replace with your actual Go server URL
-        let serverURL = "https://your-go-server.com/api/auth-code/\(code)"
+        // TODO: Replace with your actual Go server URL  
+        let serverURL = "https://localhost:8443/api/auth-code/\(code)"
         
         guard let url = URL(string: serverURL) else {
             completion(nil, nil)
@@ -153,8 +154,11 @@ class EmergencyContactAuth: ObservableObject {
                 
                 guard let data = data,
                       let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-                      let deviceToken = json["device_token"] as? String,
-                      let deviceName = json["device_name"] as? String else {
+                      let success = json["success"] as? Bool,
+                      success,
+                      let responseData = json["data"] as? [String: Any],
+                      let deviceToken = responseData["device_token"] as? String,
+                      let deviceName = responseData["device_name"] as? String else {
                     completion(nil, nil)
                     return
                 }
