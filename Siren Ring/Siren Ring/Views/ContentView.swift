@@ -1,10 +1,12 @@
 import SwiftUI
 import UserNotifications
 
+/// Main view displaying SIREN Ring connection status and emergency contacts management
 struct ContentView: View {
     @StateObject private var bluetoothManager = BluetoothManager()
     @StateObject private var emergencyManager = EmergencyManager.shared
     @State private var showingContactsSheet = false
+    @State private var showingShareSheet = false
     
     var body: some View {
         NavigationView {
@@ -44,7 +46,7 @@ struct ContentView: View {
                 .padding()
                 
                 // Connection Controls
-                HStack(spacing: 20) {
+                HStack(spacing: 15) {
                     Button(action: { bluetoothManager.startScanning() }) {
                         Label("Scan", systemImage: "magnifyingglass")
                             .padding()
@@ -55,15 +57,14 @@ struct ContentView: View {
                     }
                     .disabled(bluetoothManager.isConnected)
                     
-                    Button(action: { bluetoothManager.disconnect() }) {
-                        Label("Disconnect", systemImage: "xmark")
+                    Button(action: { showingShareSheet = true }) {
+                        Label("Share", systemImage: "square.and.arrow.up")
                             .padding()
                             .frame(maxWidth: .infinity)
-                            .background(Color.red)
+                            .background(Color.green)
                             .foregroundColor(.white)
                             .cornerRadius(10)
                     }
-                    .disabled(!bluetoothManager.isConnected)
                 }
                 .padding(.horizontal)
                 
@@ -78,6 +79,8 @@ struct ContentView: View {
                         Button("Add") {
                             showingContactsSheet = true
                         }
+                        .buttonStyle(.borderedProminent)
+                        .controlSize(.small)
                     }
                     
                     if emergencyManager.emergencyContacts.isEmpty {
@@ -87,17 +90,59 @@ struct ContentView: View {
                     } else {
                         ForEach(emergencyManager.emergencyContacts) { contact in
                             HStack {
-                                VStack(alignment: .leading) {
+                                // Contact Type Icon
+                                VStack {
+                                    Image(systemName: contact.contactType.iconName)
+                                        .font(.title2)
+                                        .foregroundColor(colorForContactType(contact.contactType))
+                                }
+                                .frame(width: 30)
+                                
+                                // Contact Information
+                                VStack(alignment: .leading, spacing: 2) {
                                     Text(contact.name)
                                         .fontWeight(.medium)
-                                    Text(contact.phoneNumber)
+                                    
+                                    Text(contact.contactType.description)
                                         .font(.caption)
                                         .foregroundColor(.secondary)
+                                    
+                                    // Show contact method details
+                                    if let phone = contact.phoneNumber {
+                                        HStack {
+                                            Image(systemName: "phone")
+                                                .font(.caption2)
+                                            Text(phone)
+                                                .font(.caption2)
+                                        }
+                                        .foregroundColor(.secondary)
+                                    }
+                                    
+                                    if let appID = contact.appID {
+                                        HStack {
+                                            Image(systemName: "app.badge")
+                                                .font(.caption2)
+                                            Text("Device: \(String(appID.prefix(8)))...")
+                                                .font(.caption2)
+                                        }
+                                        .foregroundColor(.secondary)
+                                    }
                                 }
+                                
                                 Spacer()
+                                
+                                // Connection Status
+                                VStack {
+                                    if contact.hasApp {
+                                        Image(systemName: contact.isConnected ? "wifi" : "wifi.slash")
+                                            .font(.caption)
+                                            .foregroundColor(contact.isConnected ? .green : .orange)
+                                    }
+                                }
                             }
-                            .padding(.vertical, 4)
+                            .padding(.vertical, 8)
                         }
+                        .onDelete(perform: deleteContact)
                     }
                 }
                 .padding()
@@ -108,8 +153,20 @@ struct ContentView: View {
                 Spacer()
             }
             .navigationTitle("SIREN Emergency")
+            // .navigationBarItems(
+            //     trailing: Menu {
+            //         Button("Generate Contact Code") {
+            //             showingShareSheet = true
+            //         }
+            //     } label: {
+            //         Image(systemName: "ellipsis.circle")
+            //     }
+            // )
             .sheet(isPresented: $showingContactsSheet) {
                 AddContactView()
+            }
+            .sheet(isPresented: $showingShareSheet) {
+                ShareContactView()
             }
         }
         .onAppear {
@@ -117,7 +174,32 @@ struct ContentView: View {
         }
     }
     
+    /// Requests notification permission from the user
     private func requestNotificationPermission() {
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { _, _ in }
+    }
+    
+    /// Deletes emergency contact at specified index
+    /// - Parameter offsets: IndexSet containing indices to delete
+    private func deleteContact(at offsets: IndexSet) {
+        for index in offsets {
+            emergencyManager.removeEmergencyContact(at: index)
+        }
+    }
+    
+    /// Returns SwiftUI Color for contact type
+    /// - Parameter contactType: The contact type
+    /// - Returns: Appropriate Color for the contact type
+    private func colorForContactType(_ contactType: ContactType) -> Color {
+        switch contactType {
+        case .appConnected:
+            return .green
+        case .appInstalled:
+            return .blue
+        case .phoneOnly:
+            return .orange
+        case .unknown:
+            return .gray
+        }
     }
 }
