@@ -5,33 +5,26 @@ import UIKit
 /// Handles authentication and registration of emergency contacts via 6-digit codes
 class ContactManager: ObservableObject {
     static let shared = ContactManager()
-    
+
     @Published var currentCode: String = ""
     @Published var isCodeActive: Bool = false
     @Published var expirationDate: Date?
-    
+
     private var timer: Timer?
     private let codeExpirationMinutes = 10
-    
     private init() {}
     
     /// Generates a new 6-digit authentication code and starts expiration timer
     /// - Returns: The generated 6-digit code
     func generateAuthCode() -> String {
-        // Generate random 6-digit code
-        let code = String(format: "%06d", Int.random(in: 100000...999999))
-        
-        currentCode = code
+        currentCode = "------"
         isCodeActive = true
         expirationDate = Date().addingTimeInterval(TimeInterval(codeExpirationMinutes * 60))
-        
-        // Start expiration timer
+
         startExpirationTimer()
-        
-        // Send code to server for mapping
-        uploadCodeToServer(code: code)
-        
-        return code
+        uploadCodeToServer()
+
+        return currentCode
     }
     
     /// Starts timer to expire the current code
@@ -70,16 +63,14 @@ class ContactManager: ObservableObject {
         return UIDevice.current.identifierForVendor?.uuidString
     }
     
-    /// Uploads authentication code and device token to server
-    /// - Parameter code: 6-digit authentication code
-    private func uploadCodeToServer(code: String) {
-        guard let deviceToken = getDeviceToken() else {
-            print("No device token available")
+    private func uploadCodeToServer() {
+        let sirenUUID = BluetoothManager.shared.deviceUUID
+        guard !sirenUUID.isEmpty else {
             return
         }
         
         // TODO: Replace with your actual Go server URL
-        let serverURL = "https://localhost:8443/api/auth-code"
+        let serverURL = "http://192.168.1.6:8080/api/auth-code"
         
         guard let url = URL(string: serverURL) else {
             print("Invalid server URL")
@@ -87,10 +78,10 @@ class ContactManager: ObservableObject {
         }
         
         let payload: [String: Any] = [
-            "code": code,
-            "device_token": deviceToken,
-            "expires_at": ISO8601DateFormatter().string(from: expirationDate ?? Date()),
-            "device_name": UIDevice.current.name
+            "device_id": sirenUUID,
+            "device_name": "SIREN Ring",
+            "user_id": "user123",
+            "expires_in": codeExpirationMinutes
         ]
         
         var request = URLRequest(url: url)
@@ -108,14 +99,28 @@ class ContactManager: ObservableObject {
             DispatchQueue.main.async {
                 if let error = error {
                     print("Failed to upload auth code: \(error)")
+                    self.isCodeActive = false
                     return
                 }
-                
+
                 if let httpResponse = response as? HTTPURLResponse {
                     if httpResponse.statusCode == 200 {
-                        print("Auth code uploaded successfully")
+                        // Parse server response to get generated code
+                        if let data = data,
+                           let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                           let success = json["success"] as? Bool,
+                           success,
+                           let responseData = json["data"] as? [String: Any],
+                           let generatedCode = responseData["code"] as? String {
+                            self.currentCode = generatedCode
+                            print("Auth code generated successfully: \(generatedCode)")
+                        } else {
+                            print("Failed to parse server response")
+                            self.isCodeActive = false
+                        }
                     } else {
                         print("Server error uploading auth code: \(httpResponse.statusCode)")
+                        self.isCodeActive = false
                     }
                 }
             }
@@ -131,19 +136,18 @@ class ContactManager: ObservableObject {
     /// Looks up contact info by authentication code
     /// - Parameters:
     ///   - code: 6-digit authentication code
-    ///   - completion: Callback with contact name and device token
+    ///   - completion: Callback with device name and device ID
     static func lookupContactByCode(_ code: String, completion: @escaping (String?, String?) -> Void) {
-        // TODO: Replace with your actual Go server URL  
-        let serverURL = "https://localhost:8443/api/auth-code/\(code)"
-        
+        let serverURL = "http://192.168.1.6:8080/api/auth-code?code=\(code)"
+
         guard let url = URL(string: serverURL) else {
             completion(nil, nil)
             return
         }
-        
+
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
-        
+
         URLSession.shared.dataTask(with: request) { data, response, error in
             DispatchQueue.main.async {
                 if let error = error {
@@ -151,19 +155,27 @@ class ContactManager: ObservableObject {
                     completion(nil, nil)
                     return
                 }
-                
+
+                if let httpResponse = response as? HTTPURLResponse {
+                    print("Server response status: \(httpResponse.statusCode)")
+                }
+
+                if let data = data {
+                    print("Server response data: \(String(data: data, encoding: .utf8) ?? "nil")")
+                }
+
                 guard let data = data,
                       let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                       let success = json["success"] as? Bool,
                       success,
                       let responseData = json["data"] as? [String: Any],
-                      let deviceToken = responseData["device_token"] as? String,
+                      let deviceID = responseData["device_id"] as? String,
                       let deviceName = responseData["device_name"] as? String else {
                     completion(nil, nil)
                     return
                 }
-                
-                completion(deviceName, deviceToken)
+
+                completion(deviceName, deviceID)
             }
         }.resume()
     }

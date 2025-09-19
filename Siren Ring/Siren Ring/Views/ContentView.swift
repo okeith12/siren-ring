@@ -3,10 +3,11 @@ import UserNotifications
 
 /// Main view displaying SIREN Ring connection status and emergency contacts management
 struct ContentView: View {
-    @StateObject private var bluetoothManager = BluetoothManager()
+    @StateObject private var bluetoothManager = BluetoothManager.shared
     @StateObject private var emergencyManager = EmergencyManager.shared
     @State private var showingContactsSheet = false
     @State private var showingShareSheet = false
+    @State private var selectedContact: EmergencyContact?
     
     var body: some View {
         NavigationView {
@@ -46,24 +47,26 @@ struct ContentView: View {
                 .padding()
                 
                 // Connection Controls
-                HStack(spacing: 15) {
-                    Button(action: { bluetoothManager.startScanning() }) {
-                        Label("Scan", systemImage: "magnifyingglass")
-                            .padding()
-                            .frame(maxWidth: .infinity)
-                            .background(Color.blue)
-                            .foregroundColor(.white)
-                            .cornerRadius(10)
-                    }
-                    .disabled(bluetoothManager.isConnected)
-                    
-                    Button(action: { showingShareSheet = true }) {
-                        Label("Share", systemImage: "square.and.arrow.up")
-                            .padding()
-                            .frame(maxWidth: .infinity)
-                            .background(Color.green)
-                            .foregroundColor(.white)
-                            .cornerRadius(10)
+                VStack {
+                    if bluetoothManager.showRegistrationButton {
+                        Button(action: { bluetoothManager.registerDevice() }) {
+                            Label("Register", systemImage: "plus.circle")
+                                .padding()
+                                .frame(maxWidth: .infinity)
+                                .background(Color.orange)
+                                .foregroundColor(.white)
+                                .cornerRadius(10)
+                        }
+                    } else {
+                        Button(action: { bluetoothManager.startScanning() }) {
+                            Label("Scan", systemImage: "magnifyingglass")
+                                .padding()
+                                .frame(maxWidth: .infinity)
+                                .background(Color.blue)
+                                .foregroundColor(.white)
+                                .cornerRadius(10)
+                        }
+                        .disabled(bluetoothManager.isConnected && !bluetoothManager.showRegistrationButton)
                     }
                 }
                 .padding(.horizontal)
@@ -89,58 +92,68 @@ struct ContentView: View {
                             .foregroundColor(.secondary)
                     } else {
                         ForEach(emergencyManager.emergencyContacts) { contact in
-                            HStack {
-                                // Contact Type Icon
-                                VStack {
-                                    Image(systemName: contact.contactType.iconName)
-                                        .font(.title2)
-                                        .foregroundColor(colorForContactType(contact.contactType))
-                                }
-                                .frame(width: 30)
-                                
-                                // Contact Information
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(contact.name)
-                                        .fontWeight(.medium)
-                                    
-                                    Text(contact.contactType.description)
+                            Button(action: {
+                                selectedContact = contact
+                            }) {
+                                HStack {
+                                    // Contact Type Icon
+                                    VStack {
+                                        Image(systemName: contact.contactType.iconName)
+                                            .font(.title2)
+                                            .foregroundColor(colorForContactType(contact.contactType))
+                                    }
+                                    .frame(width: 30)
+
+                                    // Contact Information
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(contact.name)
+                                            .fontWeight(.medium)
+                                            .foregroundColor(.primary)
+
+                                        Text(contact.contactType.description)
+                                            .font(.caption)
+                                            .foregroundColor(.secondary)
+
+                                        // Show contact method details
+                                        if let phone = contact.phoneNumber {
+                                            HStack {
+                                                Image(systemName: "phone")
+                                                    .font(.caption2)
+                                                Text(phone)
+                                                    .font(.caption2)
+                                            }
+                                            .foregroundColor(.secondary)
+                                        }
+
+                                        if let appID = contact.appID {
+                                            HStack {
+                                                Image(systemName: "app.badge")
+                                                    .font(.caption2)
+                                                Text("Device: \(String(appID.prefix(8)))...")
+                                                    .font(.caption2)
+                                            }
+                                            .foregroundColor(.secondary)
+                                        }
+                                    }
+
+                                    Spacer()
+
+                                    // Connection Status
+                                    VStack {
+                                        if contact.hasApp {
+                                            Image(systemName: contact.isConnected ? "wifi" : "wifi.slash")
+                                                .font(.caption)
+                                                .foregroundColor(contact.isConnected ? .green : .orange)
+                                        }
+                                    }
+
+                                    // Chevron indicator
+                                    Image(systemName: "chevron.right")
                                         .font(.caption)
                                         .foregroundColor(.secondary)
-                                    
-                                    // Show contact method details
-                                    if let phone = contact.phoneNumber {
-                                        HStack {
-                                            Image(systemName: "phone")
-                                                .font(.caption2)
-                                            Text(phone)
-                                                .font(.caption2)
-                                        }
-                                        .foregroundColor(.secondary)
-                                    }
-                                    
-                                    if let appID = contact.appID {
-                                        HStack {
-                                            Image(systemName: "app.badge")
-                                                .font(.caption2)
-                                            Text("Device: \(String(appID.prefix(8)))...")
-                                                .font(.caption2)
-                                        }
-                                        .foregroundColor(.secondary)
-                                    }
                                 }
-                                
-                                Spacer()
-                                
-                                // Connection Status
-                                VStack {
-                                    if contact.hasApp {
-                                        Image(systemName: contact.isConnected ? "wifi" : "wifi.slash")
-                                            .font(.caption)
-                                            .foregroundColor(contact.isConnected ? .green : .orange)
-                                    }
-                                }
+                                .padding(.vertical, 8)
                             }
-                            .padding(.vertical, 8)
                         }
                         .onDelete(perform: deleteContact)
                     }
@@ -153,20 +166,23 @@ struct ContentView: View {
                 Spacer()
             }
             .navigationTitle("SIREN Emergency")
-            // .navigationBarItems(
-            //     trailing: Menu {
-            //         Button("Generate Contact Code") {
-            //             showingShareSheet = true
-            //         }
-            //     } label: {
-            //         Image(systemName: "ellipsis.circle")
-            //     }
-            // )
+            .navigationBarTitleDisplayMode(.large)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button(action: { showingShareSheet = true }) {
+                        Image(systemName: "square.and.arrow.up")
+                            .foregroundColor(.blue)
+                    }
+                }
+            }
             .sheet(isPresented: $showingContactsSheet) {
                 AddContactView()
             }
             .sheet(isPresented: $showingShareSheet) {
                 ShareContactView()
+            }
+            .sheet(item: $selectedContact) { contact in
+                ContactDetailView(contact: contact)
             }
         }
         .onAppear {

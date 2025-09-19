@@ -1,5 +1,6 @@
 import Foundation
 import UserNotifications
+import UIKit
 
 /// Manages emergency contacts and alert distribution via Go server and APNs
 class EmergencyManager: ObservableObject {
@@ -34,7 +35,7 @@ class EmergencyManager: ObservableObject {
     /// Sends HTTP request to Go server with emergency data
     private func sendEmergencyToServer() {
         // TODO: Replace with your actual Go server URL
-        let serverURL = "https://localhost:8443/api/emergency"
+        let serverURL = "http://192.168.1.6:8080/api/emergency"
         
         guard let url = URL(string: serverURL) else {
             print("Invalid server URL")
@@ -78,14 +79,14 @@ class EmergencyManager: ObservableObject {
     /// - Returns: Dictionary containing emergency data
     private func createEmergencyPayload() -> [String: Any] {
         let timestamp = ISO8601DateFormatter().string(from: Date())
-        let deviceTokens = emergencyContacts.compactMap { $0.appID }
+        let deviceIDs = emergencyContacts.compactMap { $0.deviceID }.filter { !$0.isEmpty }
         let phoneNumbers = emergencyContacts.compactMap { $0.phoneNumber }
-        
+
         return [
             "emergency_type": "siren_ring_activation",
             "timestamp": timestamp,
-            "user_id": UIDevice.current.identifierForVendor?.uuidString ?? "unknown",
-            "device_tokens": deviceTokens,
+            "user_id": BluetoothManager.shared.deviceUUID,
+            "device_ids": deviceIDs,
             "phone_numbers": phoneNumbers,
             "message": "EMERGENCY ALERT - SIREN Ring activated. Please check on me immediately.",
             "priority": "critical"
@@ -145,6 +146,13 @@ class EmergencyManager: ObservableObject {
     /// - Parameter index: Index of contact to remove
     func removeEmergencyContact(at index: Int) {
         emergencyContacts.remove(at: index)
+        saveEmergencyContacts()
+    }
+
+    /// Removes emergency contact by ID
+    /// - Parameter contact: Emergency contact to remove
+    func removeEmergencyContact(_ contact: EmergencyContact) {
+        emergencyContacts.removeAll { $0.id == contact.id }
         saveEmergencyContacts()
     }
     

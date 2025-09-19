@@ -177,20 +177,20 @@ struct AddContactView: View {
     }
     
     private func addAppContact() {
-        ContactManager.lookupContactByCode(authCode) { name, deviceToken in
+        ContactManager.lookupContactByCode(authCode) { name, deviceID in
             isLoading = false
-            
-            guard let contactDeviceName = name, let appID = deviceToken else {
+
+            guard let contactDeviceName = name, let contactDeviceID = deviceID else {
                 errorMessage = "Code not found or expired. Please ask your contact to generate a new code."
                 showingError = true
                 return
             }
-            
-            // Create contact with app integration
+
+            // Create contact with SIREN Ring device integration
             let contact = EmergencyContact(name: contactName.trimmingCharacters(in: .whitespacesAndNewlines),
-                                         appID: appID,
+                                         deviceID: contactDeviceID,
                                          phoneNumber: phoneNumber.isEmpty ? nil : phoneNumber)
-            
+
             EmergencyManager.shared.addEmergencyContact(contact)
             presentationMode.wrappedValue.dismiss()
         }

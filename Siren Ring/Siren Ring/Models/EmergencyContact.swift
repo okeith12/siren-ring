@@ -1,11 +1,11 @@
 import Foundation
 
-/// Emergency contact model supporting both phone and app-based contacts
+/// Emergency contact model supporting both phone and device-based contacts
 struct EmergencyContact: Identifiable, Codable {
     let id = UUID()
     let name: String
     let phoneNumber: String?     // For SMS fallback
-    let appID: String?          // Device token for APNs push notifications  
+    let deviceID: String?        // SIREN Ring device ID (13-character UUID)
     let hasApp: Bool            // Whether they have SIREN app installed
     let isConnected: Bool       // Whether they're connected via app
     
@@ -29,20 +29,20 @@ struct EmergencyContact: Identifiable, Codable {
     init(name: String, phoneNumber: String) {
         self.name = name
         self.phoneNumber = phoneNumber
-        self.appID = nil
+        self.deviceID = nil
         self.hasApp = false
         self.isConnected = false
     }
-    
-    /// Initializes an emergency contact with app connection
+
+    /// Initializes an emergency contact with SIREN Ring device connection
     /// - Parameters:
     ///   - name: Full name of the emergency contact
-    ///   - appID: Device token for APNs push notifications
+    ///   - deviceID: SIREN Ring device ID (13-character UUID)
     ///   - phoneNumber: Optional phone number for SMS fallback
-    init(name: String, appID: String, phoneNumber: String? = nil) {
+    init(name: String, deviceID: String, phoneNumber: String? = nil) {
         self.name = name
         self.phoneNumber = phoneNumber
-        self.appID = appID
+        self.deviceID = deviceID
         self.hasApp = true
         self.isConnected = true
     }
