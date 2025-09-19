@@ -1,6 +1,8 @@
 import Foundation
-import MessageUI
+import UserNotifications
+import UIKit
 
+/// Manages emergency contacts and alert distribution via Go server and APNs
 class EmergencyManager: ObservableObject {
     static let shared = EmergencyManager()
     
@@ -10,13 +12,13 @@ class EmergencyManager: ObservableObject {
         loadEmergencyContacts()
     }
     
-    // Call this when emergency is triggered (without location for now)
+    /// Triggers emergency alert to all contacts via Go server and APNs
     func sendEmergencyAlert() {
-        let message = createEmergencyMessage()
+        // Show local notification that alert is being sent
+        sendLocalEmergencyNotification()
         
-        for contact in emergencyContacts {
-            sendSMS(to: contact.phoneNumber, message: message)
-        }
+        // Send to Go server for APNs delivery
+        sendEmergencyToServer()
     }
     
     // TODO: Location functionality - commented out for now
@@ -30,36 +32,99 @@ class EmergencyManager: ObservableObject {
     }
     */
     
-    private func createEmergencyMessage() -> String {
-        let timestamp = DateFormatter.localizedString(from: Date(), dateStyle: .short, timeStyle: .short)
+    /// Sends HTTP request to Go server with emergency data
+    private func sendEmergencyToServer() {
+        // TODO: Replace with your actual Go server URL
+        let serverURL = "http://192.168.1.6:8080/api/emergency"
         
-        var message = "EMERGENCY ALERT\n"
-        message += "SIREN Ring activated at \(timestamp)\n"
-        message += "Please check on me immediately."
-        
-        // TODO: Add location when implemented
-        /*
-        if let location = location {
-            let lat = String(format: "%.6f", location.coordinate.latitude)
-            let lon = String(format: "%.6f", location.coordinate.longitude)
-            message += "Location: \(lat), \(lon)\n"
-            message += "Maps: https://maps.apple.com/?q=\(lat),\(lon)"
-        } else {
-            message += "Location: Unable to determine"
+        guard let url = URL(string: serverURL) else {
+            print("Invalid server URL")
+            return
         }
-        */
         
-        return message
+        let emergencyData = createEmergencyPayload()
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        do {
+            request.httpBody = try JSONSerialization.data(withJSONObject: emergencyData)
+        } catch {
+            print("Failed to encode emergency data: \(error)")
+            return
+        }
+        
+        URLSession.shared.dataTask(with: request) { data, response, error in
+            DispatchQueue.main.async {
+                if let error = error {
+                    print("Emergency server request failed: \(error)")
+                    self.showLocalErrorNotification()
+                    return
+                }
+                
+                if let httpResponse = response as? HTTPURLResponse {
+                    if httpResponse.statusCode == 200 {
+                        print("Emergency alert sent successfully to \(self.emergencyContacts.count) contacts")
+                    } else {
+                        print("Server returned error: \(httpResponse.statusCode)")
+                        self.showLocalErrorNotification()
+                    }
+                }
+            }
+        }.resume()
     }
     
-    private func sendSMS(to phoneNumber: String, message: String) {
-        if MFMessageComposeViewController.canSendText() {
-            // This requires presenting from a view controller
-            // For now, we'll just log the message
-            print("Sending SMS to \(phoneNumber): \(message)")
-        }
+    /// Creates JSON payload for Go server
+    /// - Returns: Dictionary containing emergency data
+    private func createEmergencyPayload() -> [String: Any] {
+        let timestamp = ISO8601DateFormatter().string(from: Date())
+        let deviceIDs = emergencyContacts.compactMap { $0.deviceID }.filter { !$0.isEmpty }
+        let phoneNumbers = emergencyContacts.compactMap { $0.phoneNumber }
+
+        return [
+            "emergency_type": "siren_ring_activation",
+            "timestamp": timestamp,
+            "user_id": BluetoothManager.shared.deviceUUID,
+            "device_ids": deviceIDs,
+            "phone_numbers": phoneNumbers,
+            "message": "EMERGENCY ALERT - SIREN Ring activated. Please check on me immediately.",
+            "priority": "critical"
+            // TODO: Add location when implemented
+        ]
     }
     
+    /// Shows local notification on this device about emergency status
+    private func sendLocalEmergencyNotification() {
+        let content = UNMutableNotificationContent()
+        content.title = "SIREN Ring Emergency Active"
+        content.body = "Emergency alert sent to \(emergencyContacts.count) contacts"
+        content.sound = .defaultCritical
+        
+        let request = UNNotificationRequest(
+            identifier: "local-emergency-\(Date().timeIntervalSince1970)",
+            content: content,
+            trigger: nil
+        )
+        UNUserNotificationCenter.current().add(request)
+    }
+    
+    /// Shows error notification if server request fails
+    private func showLocalErrorNotification() {
+        let content = UNMutableNotificationContent()
+        content.title = "Emergency Alert Failed"
+        content.body = "Unable to notify emergency contacts. Check connection."
+        content.sound = .defaultCritical
+        
+        let request = UNNotificationRequest(
+            identifier: "emergency-error-\(Date().timeIntervalSince1970)",
+            content: content,
+            trigger: nil
+        )
+        UNUserNotificationCenter.current().add(request)
+    }
+    
+    /// Loads emergency contacts from persistent storage
     private func loadEmergencyContacts() {
         if let data = UserDefaults.standard.data(forKey: "emergencyContacts"),
            let contacts = try? JSONDecoder().decode([EmergencyContact].self, from: data) {
@@ -70,16 +135,28 @@ class EmergencyManager: ObservableObject {
         }
     }
     
+    /// Adds new emergency contact to the list
+    /// - Parameter contact: Emergency contact to add
     func addEmergencyContact(_ contact: EmergencyContact) {
         emergencyContacts.append(contact)
         saveEmergencyContacts()
     }
     
+    /// Removes emergency contact at specified index
+    /// - Parameter index: Index of contact to remove
     func removeEmergencyContact(at index: Int) {
         emergencyContacts.remove(at: index)
         saveEmergencyContacts()
     }
+
+    /// Removes emergency contact by ID
+    /// - Parameter contact: Emergency contact to remove
+    func removeEmergencyContact(_ contact: EmergencyContact) {
+        emergencyContacts.removeAll { $0.id == contact.id }
+        saveEmergencyContacts()
+    }
     
+    /// Persists emergency contacts to UserDefaults
     private func saveEmergencyContacts() {
         if let data = try? JSONEncoder().encode(emergencyContacts) {
             UserDefaults.standard.set(data, forKey: "emergencyContacts")
