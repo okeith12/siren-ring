@@ -2,7 +2,7 @@ import Foundation
 
 /// Emergency contact model supporting both phone and device-based contacts
 struct EmergencyContact: Identifiable, Codable {
-    let id = UUID()
+    let id: UUID
     let name: String
     let phoneNumber: String?     // For SMS fallback
     let deviceID: String?        // SIREN Ring device ID (13-character UUID)
@@ -27,6 +27,7 @@ struct EmergencyContact: Identifiable, Codable {
     ///   - name: Full name of the emergency contact
     ///   - phoneNumber: Phone number for SMS notifications
     init(name: String, phoneNumber: String) {
+        self.id = UUID()
         self.name = name
         self.phoneNumber = phoneNumber
         self.deviceID = nil
@@ -40,6 +41,7 @@ struct EmergencyContact: Identifiable, Codable {
     ///   - deviceID: SIREN Ring device ID (13-character UUID)
     ///   - phoneNumber: Optional phone number for SMS fallback
     init(name: String, deviceID: String, phoneNumber: String? = nil) {
+        self.id = UUID()
         self.name = name
         self.phoneNumber = phoneNumber
         self.deviceID = deviceID

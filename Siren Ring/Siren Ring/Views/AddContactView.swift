@@ -35,13 +35,15 @@ struct AddContactView: View {
                 }
                 
                 VStack(spacing: 20) {
-                    // Contact Name
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Contact Name")
-                            .font(.headline)
-                        
-                        TextField("Full Name", text: $contactName)
-                            .textFieldStyle(.roundedBorder)
+                    // Contact Name (only show for phone method)
+                    if selectedMethod == .phone {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Contact Name")
+                                .font(.headline)
+
+                            TextField("Full Name", text: $contactName)
+                                .textFieldStyle(.roundedBorder)
+                        }
                     }
                     
                     // Contact Method Picker
@@ -78,7 +80,7 @@ struct AddContactView: View {
                                 .keyboardType(.numberPad)
                                 .textCase(.uppercase)
                                 .multilineTextAlignment(.center)
-                                .onChange(of: authCode) { newValue in
+                                .onChange(of: authCode) { _, newValue in
                                     if newValue.count > 6 {
                                         authCode = String(newValue.prefix(6))
                                     }
@@ -143,10 +145,9 @@ struct AddContactView: View {
     }
     
     private func isFormValid() -> Bool {
-        guard !contactName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return false }
-        
         if selectedMethod == .phone {
-            return !phoneNumber.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            return !contactName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
+                   !phoneNumber.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         } else {
             return authCode.count == 6
         }
@@ -177,22 +178,27 @@ struct AddContactView: View {
     }
     
     private func addAppContact() {
-        ContactManager.lookupContactByCode(authCode) { name, deviceID in
-            isLoading = false
-
-            guard let contactDeviceName = name, let contactDeviceID = deviceID else {
-                errorMessage = "Code not found or expired. Please ask your contact to generate a new code."
-                showingError = true
+        ContactManager.lookupContactByCode(authCode) { contactInfo in
+            guard let info = contactInfo else {
+                DispatchQueue.main.async {
+                    self.isLoading = false
+                    self.errorMessage = "Code not found or expired. Please ask your contact to generate a new code."
+                    self.showingError = true
+                }
                 return
             }
 
-            // Create contact with SIREN Ring device integration
-            let contact = EmergencyContact(name: contactName.trimmingCharacters(in: .whitespacesAndNewlines),
-                                         deviceID: contactDeviceID,
-                                         phoneNumber: phoneNumber.isEmpty ? nil : phoneNumber)
+            let contact = EmergencyContact(
+                name: info.name,
+                deviceID: info.deviceID,
+                phoneNumber: self.phoneNumber.isEmpty ? nil : self.phoneNumber
+            )
 
-            EmergencyManager.shared.addEmergencyContact(contact)
-            presentationMode.wrappedValue.dismiss()
+            DispatchQueue.main.async {
+                EmergencyManager.shared.addEmergencyContact(contact)
+                self.isLoading = false
+                self.presentationMode.wrappedValue.dismiss()
+            }
         }
     }
 }

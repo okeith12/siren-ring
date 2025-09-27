@@ -133,15 +133,21 @@ class ContactManager: ObservableObject {
         print("Auth code expired - removed from server")
     }
     
+    struct ContactInfo {
+        let name: String
+        let deviceID: String
+        let hasApp: Bool
+    }
+
     /// Looks up contact info by authentication code
     /// - Parameters:
     ///   - code: 6-digit authentication code
-    ///   - completion: Callback with device name and device ID
-    static func lookupContactByCode(_ code: String, completion: @escaping (String?, String?) -> Void) {
+    ///   - completion: Callback with contact info
+    static func lookupContactByCode(_ code: String, completion: @escaping (ContactInfo?) -> Void) {
         let serverURL = "http://192.168.1.6:8080/api/auth-code?code=\(code)"
 
         guard let url = URL(string: serverURL) else {
-            completion(nil, nil)
+            completion(nil)
             return
         }
 
@@ -152,16 +158,8 @@ class ContactManager: ObservableObject {
             DispatchQueue.main.async {
                 if let error = error {
                     print("Failed to lookup auth code: \(error)")
-                    completion(nil, nil)
+                    completion(nil)
                     return
-                }
-
-                if let httpResponse = response as? HTTPURLResponse {
-                    print("Server response status: \(httpResponse.statusCode)")
-                }
-
-                if let data = data {
-                    print("Server response data: \(String(data: data, encoding: .utf8) ?? "nil")")
                 }
 
                 guard let data = data,
@@ -169,13 +167,15 @@ class ContactManager: ObservableObject {
                       let success = json["success"] as? Bool,
                       success,
                       let responseData = json["data"] as? [String: Any],
+                      let name = responseData["name"] as? String,
                       let deviceID = responseData["device_id"] as? String,
-                      let deviceName = responseData["device_name"] as? String else {
-                    completion(nil, nil)
+                      let hasApp = responseData["has_app"] as? Bool else {
+                    completion(nil)
                     return
                 }
 
-                completion(deviceName, deviceID)
+                let contactInfo = ContactInfo(name: name, deviceID: deviceID, hasApp: hasApp)
+                completion(contactInfo)
             }
         }.resume()
     }

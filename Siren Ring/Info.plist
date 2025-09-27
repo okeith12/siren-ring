@@ -23,7 +23,7 @@
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
 	<string>SIREN Ring needs background location to track emergencies even when the app is closed</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>SIREN Ring needs location to send emergency location in alerts</string>
+	<string>SIREN Ring needs location access to send your location during emergency alerts</string>
 	<key>NSUserNotificationUsageDescription</key>
 	<string>SIREN Ring will send notifications for emergency alerts</string>
 	<key>UIBackgroundModes</key>
@@ -46,6 +46,8 @@
 	</array>
 	<key>UIUserInterfaceStyle</key>
 	<string>Automatic</string>
+	<key>UIRequiresFullScreen</key>
+	<true/>
 	<key>aps-environment</key>
 	<string>development</string>
 	<key>NSAppTransportSecurity</key>
@@ -63,13 +65,13 @@
 				<key>NSExceptionAllowsInsecureHTTPLoads</key>
 				<true/>
 				<key>NSExceptionMinimumTLSVersion</key>
-				<string>TLSv1.0</string>
+				<string>TLSv1.2</string>
 				<key>NSExceptionRequiresForwardSecrecy</key>
 				<false/>
 				<key>NSThirdPartyExceptionAllowsInsecureHTTPLoads</key>
 				<true/>
 				<key>NSThirdPartyExceptionMinimumTLSVersion</key>
-				<string>TLSv1.0</string>
+				<string>TLSv1.2</string>
 				<key>NSThirdPartyExceptionRequiresForwardSecrecy</key>
 				<false/>
 			</dict>
@@ -78,13 +80,13 @@
 				<key>NSExceptionAllowsInsecureHTTPLoads</key>
 				<true/>
 				<key>NSExceptionMinimumTLSVersion</key>
-				<string>TLSv1.0</string>
+				<string>TLSv1.2</string>
 				<key>NSExceptionRequiresForwardSecrecy</key>
 				<false/>
 				<key>NSThirdPartyExceptionAllowsInsecureHTTPLoads</key>
 				<true/>
 				<key>NSThirdPartyExceptionMinimumTLSVersion</key>
-				<string>TLSv1.0</string>
+				<string>TLSv1.2</string>
 				<key>NSThirdPartyExceptionRequiresForwardSecrecy</key>
 				<false/>
 			</dict>

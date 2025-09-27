@@ -12,6 +12,9 @@ class BluetoothManager: NSObject, ObservableObject {
     @Published var lastAlert = "No alerts"
     @Published var deviceUUID: String = ""
     @Published var showRegistrationButton = false
+    @Published var mySirenRing: String = "" // Paired device identifier
+    @Published var userName: String = ""
+    @Published var customDeviceName: String = ""
 
     private var centralManager: CBCentralManager!
     private var sirenPeripheral: CBPeripheral?
@@ -26,12 +29,42 @@ class BluetoothManager: NSObject, ObservableObject {
     private override init() {
         super.init()
         centralManager = CBCentralManager(delegate: self, queue: nil)
+        loadPairedDevice()
+    }
+
+    /// Save paired device UUID to UserDefaults
+    private func savePairedDevice(_ deviceUUID: String) {
+        UserDefaults.standard.set(deviceUUID, forKey: "paired_siren_ring")
+        mySirenRing = deviceUUID
+        print("💾 Saved paired SIREN Ring: \(deviceUUID)")
+    }
+
+    /// Load paired device UUID from UserDefaults
+    private func loadPairedDevice() {
+        if let pairedDevice = UserDefaults.standard.string(forKey: "paired_siren_ring") {
+            mySirenRing = pairedDevice
+            print("📱 Loaded paired SIREN Ring: \(pairedDevice)")
+        }
+    }
+
+    /// Clear paired device (unpair)
+    private func clearPairedDevice() {
+        UserDefaults.standard.removeObject(forKey: "paired_siren_ring")
+        mySirenRing = ""
+        print("🗑️ Cleared paired SIREN Ring")
     }
     
     /// Starts scanning for SIREN Ring devices
     func startScanning() {
         if centralManager.state == .poweredOn {
-            connectionStatus = "Scanning..."
+            // If we have a paired device, try to connect directly to it
+            if !mySirenRing.isEmpty {
+                connectionStatus = "Connecting to My SIREN Ring..."
+                print("🔍 Looking for paired device: \(mySirenRing)")
+            } else {
+                connectionStatus = "Scanning for SIREN Rings..."
+                print("🔍 Scanning for available SIREN Rings...")
+            }
             centralManager.scanForPeripherals(withServices: nil, options: nil)
         }
     }
@@ -58,6 +91,25 @@ class BluetoothManager: NSObject, ObservableObject {
 
         connectionStatus = "Registering device..."
         registerDeviceWithServer(uuid: deviceUUID)
+    }
+
+    /// Deregisters the ESP32 device by sending BLE false signal
+    func deregisterDevice() {
+        guard !deviceUUID.isEmpty else {
+            print("❌ No device UUID available for deregistration")
+            return
+        }
+
+        connectionStatus = "Deregistering device..."
+
+        // Send false signal to ESP32 to mark as not registered
+        sendRegistrationConfirmation(success: false)
+
+        // Update UI
+        DispatchQueue.main.async {
+            self.showRegistrationButton = true
+            self.connectionStatus = "Device connected - Not registered"
+        }
     }
     
     /// Handles emergency alert codes from SIREN Ring device
@@ -138,11 +190,24 @@ extension BluetoothManager: CBCentralManagerDelegate {
     ///   - RSSI: Signal strength indicator
     func centralManager(_ central: CBCentralManager, didDiscover peripheral: CBPeripheral, advertisementData: [String : Any], rssi RSSI: NSNumber) {
         if peripheral.name == "SIREN-Ring" {
-            connectionStatus = "Found SIREN Ring"
-            centralManager.stopScan()
-            sirenPeripheral = peripheral
-            peripheral.delegate = self
-            centralManager.connect(peripheral, options: nil)
+            print("🔍 Discovered SIREN Ring: \(peripheral.identifier)")
+
+            // If we have a paired device, only connect to that specific one
+            if !mySirenRing.isEmpty {
+                // We'll check the actual device UUID after connecting to see if it matches
+                connectionStatus = "Checking My SIREN Ring..."
+                centralManager.stopScan()
+                sirenPeripheral = peripheral
+                peripheral.delegate = self
+                centralManager.connect(peripheral, options: nil)
+            } else {
+                // No paired device - connect to any available unregistered ring
+                connectionStatus = "Found SIREN Ring"
+                centralManager.stopScan()
+                sirenPeripheral = peripheral
+                peripheral.delegate = self
+                centralManager.connect(peripheral, options: nil)
+            }
         }
     }
     
@@ -247,11 +312,23 @@ extension BluetoothManager: CBPeripheralDelegate {
                 self.deviceUUID = uuid
                 print("📱 Parsed device info: UUID=\(uuid), isRegistered=\(isRegistered)")
 
+                // Check if this is our paired device or if we need to pair
+                if !self.mySirenRing.isEmpty && self.mySirenRing != uuid {
+                    // This is not our paired device - disconnect
+                    self.connectionStatus = "Wrong SIREN Ring - Disconnecting"
+                    self.disconnect()
+                    return
+                }
+
                 if !isRegistered {
                     self.connectionStatus = "Device connected - Not registered"
                     self.showRegistrationButton = true
                 } else {
-                    self.connectionStatus = "Device ready"
+                    // Device is registered - save as paired device if not already saved
+                    if self.mySirenRing.isEmpty {
+                        self.savePairedDevice(uuid)
+                    }
+                    self.connectionStatus = "My SIREN Ring ready"
                     self.showRegistrationButton = false
                 }
             }
@@ -262,7 +339,7 @@ extension BluetoothManager: CBPeripheralDelegate {
     /// Registers the ESP32 device with the Go server
     /// - Parameter uuid: The device UUID from ESP32
     private func registerDeviceWithServer(uuid: String) {
-        let serverURL = "http://192.168.1.6:8080/api/register-token"
+        let serverURL = "http://192.168.1.6:8080/api/register-device"
 
         guard let url = URL(string: serverURL) else {
             print("Invalid server URL")
@@ -271,8 +348,9 @@ extension BluetoothManager: CBPeripheralDelegate {
 
         let deviceData = [
             "device_id": uuid,
-            "user_id": "user123", // TODO: Replace with actual user ID
-            "device_name": "SIREN Ring"
+            "user_id": userName.isEmpty ? "Default User" : userName,
+            "device_name": customDeviceName.isEmpty ? "SIREN Ring" : customDeviceName,
+            "apns_token": NotificationManager.shared.deviceToken ?? ""
         ]
 
         var request = URLRequest(url: url)
@@ -296,7 +374,9 @@ extension BluetoothManager: CBPeripheralDelegate {
                 DispatchQueue.main.async {
                     if httpResponse.statusCode == 200 {
                         print("✅ Device registered with server")
-                        self.connectionStatus = "Device ready"
+                        // Save this device as our paired SIREN Ring
+                        self.savePairedDevice(uuid)
+                        self.connectionStatus = "My SIREN Ring ready"
                         self.showRegistrationButton = false
 
                         // Send registration success back to ESP32

@@ -1,24 +1,53 @@
 import Foundation
 import UserNotifications
 import UIKit
+import CoreLocation
 
 /// Manages emergency contacts and alert distribution via Go server and APNs
-class EmergencyManager: ObservableObject {
+class EmergencyManager: NSObject, ObservableObject, CLLocationManagerDelegate {
     static let shared = EmergencyManager()
-    
+
     @Published var emergencyContacts: [EmergencyContact] = []
-    
-    private init() {
+
+    private let locationManager = CLLocationManager()
+    private var currentLocation: CLLocation?
+
+    private override init() {
+        super.init()
+        setupLocationManager()
         loadEmergencyContacts()
+    }
+
+    private func setupLocationManager() {
+        locationManager.delegate = self
+        locationManager.desiredAccuracy = kCLLocationAccuracyBest
+        locationManager.requestWhenInUseAuthorization()
     }
     
     /// Triggers emergency alert to all contacts via Go server and APNs
     func sendEmergencyAlert() {
-        // Show local notification that alert is being sent
-        sendLocalEmergencyNotification()
-        
+        // Request current location
+        locationManager.requestLocation()
+
+        // Create personalized message
+        let userName = BluetoothManager.shared.userName.isEmpty ? "Someone" : BluetoothManager.shared.userName
+        let locationText = formatLocation()
+        let message = "\(userName) has triggered an emergency alert.\nCurrent location: \(locationText)"
+
         // Send to Go server for APNs delivery
-        sendEmergencyToServer()
+        sendEmergencyToServer(message: message)
+    }
+
+    private func formatLocation() -> String {
+        guard let location = currentLocation else {
+            return "Location unavailable"
+        }
+
+        let latitude = location.coordinate.latitude
+        let longitude = location.coordinate.longitude
+
+        // Create Apple Maps URL that opens as clickable pin
+        return "https://maps.apple.com/?ll=\(latitude),\(longitude)&q=Emergency%20Location"
     }
     
     // TODO: Location functionality - commented out for now
@@ -33,7 +62,7 @@ class EmergencyManager: ObservableObject {
     */
     
     /// Sends HTTP request to Go server with emergency data
-    private func sendEmergencyToServer() {
+    private func sendEmergencyToServer(message: String) {
         // TODO: Replace with your actual Go server URL
         let serverURL = "http://192.168.1.6:8080/api/emergency"
         
@@ -42,7 +71,7 @@ class EmergencyManager: ObservableObject {
             return
         }
         
-        let emergencyData = createEmergencyPayload()
+        let emergencyData = createEmergencyPayload(message: message)
         
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
@@ -77,20 +106,24 @@ class EmergencyManager: ObservableObject {
     
     /// Creates JSON payload for Go server
     /// - Returns: Dictionary containing emergency data
-    private func createEmergencyPayload() -> [String: Any] {
+    private func createEmergencyPayload(message: String) -> [String: Any] {
         let timestamp = ISO8601DateFormatter().string(from: Date())
-        let deviceIDs = emergencyContacts.compactMap { $0.deviceID }.filter { !$0.isEmpty }
-        let phoneNumbers = emergencyContacts.compactMap { $0.phoneNumber }
+
+        let contacts = emergencyContacts.map { contact in
+            return [
+                "name": contact.name,
+                "phone": contact.phoneNumber ?? "",
+                "device_id": contact.deviceID ?? ""
+            ]
+        }
 
         return [
             "emergency_type": "siren_ring_activation",
             "timestamp": timestamp,
             "user_id": BluetoothManager.shared.deviceUUID,
-            "device_ids": deviceIDs,
-            "phone_numbers": phoneNumbers,
-            "message": "EMERGENCY ALERT - SIREN Ring activated. Please check on me immediately.",
+            "contacts": contacts,
+            "message": message,
             "priority": "critical"
-            // TODO: Add location when implemented
         ]
     }
     
@@ -161,5 +194,16 @@ class EmergencyManager: ObservableObject {
         if let data = try? JSONEncoder().encode(emergencyContacts) {
             UserDefaults.standard.set(data, forKey: "emergencyContacts")
         }
+    }
+
+    // MARK: - CLLocationManagerDelegate
+
+    func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+        currentLocation = locations.last
+    }
+
+    func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
+        print("Failed to get location: \(error)")
+        currentLocation = nil
     }
 }

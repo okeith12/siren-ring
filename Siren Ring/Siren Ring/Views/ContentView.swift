@@ -8,6 +8,7 @@ struct ContentView: View {
     @State private var showingContactsSheet = false
     @State private var showingShareSheet = false
     @State private var selectedContact: EmergencyContact?
+    @State private var showingRegistrationForm = false
     
     var body: some View {
         NavigationView {
@@ -49,7 +50,7 @@ struct ContentView: View {
                 // Connection Controls
                 VStack {
                     if bluetoothManager.showRegistrationButton {
-                        Button(action: { bluetoothManager.registerDevice() }) {
+                        Button(action: { showingRegistrationForm = true }) {
                             Label("Register", systemImage: "plus.circle")
                                 .padding()
                                 .frame(maxWidth: .infinity)
@@ -58,15 +59,31 @@ struct ContentView: View {
                                 .cornerRadius(10)
                         }
                     } else {
-                        Button(action: { bluetoothManager.startScanning() }) {
-                            Label("Scan", systemImage: "magnifyingglass")
-                                .padding()
-                                .frame(maxWidth: .infinity)
-                                .background(Color.blue)
-                                .foregroundColor(.white)
-                                .cornerRadius(10)
+                        Button(action: {
+                            if bluetoothManager.isConnected && !bluetoothManager.showRegistrationButton {
+                                // Device is connected and registered - trigger manual emergency
+                                EmergencyManager.shared.sendEmergencyAlert()
+                            } else {
+                                // Device not connected/registered - scan for devices
+                                bluetoothManager.startScanning()
+                            }
+                        }) {
+                            if bluetoothManager.isConnected && !bluetoothManager.showRegistrationButton {
+                                Label("Manual Emergency", systemImage: "exclamationmark.triangle.fill")
+                                    .padding()
+                                    .frame(maxWidth: .infinity)
+                                    .background(Color.red)
+                                    .foregroundColor(.white)
+                                    .cornerRadius(10)
+                            } else {
+                                Label("Scan", systemImage: "magnifyingglass")
+                                    .padding()
+                                    .frame(maxWidth: .infinity)
+                                    .background(Color.blue)
+                                    .foregroundColor(.white)
+                                    .cornerRadius(10)
+                            }
                         }
-                        .disabled(bluetoothManager.isConnected && !bluetoothManager.showRegistrationButton)
                     }
                 }
                 .padding(.horizontal)
@@ -125,11 +142,11 @@ struct ContentView: View {
                                             .foregroundColor(.secondary)
                                         }
 
-                                        if let appID = contact.appID {
+                                        if let deviceID = contact.deviceID {
                                             HStack {
                                                 Image(systemName: "app.badge")
                                                     .font(.caption2)
-                                                Text("Device: \(String(appID.prefix(8)))...")
+                                                Text("Device: \(String(deviceID.prefix(8)))...")
                                                     .font(.caption2)
                                             }
                                             .foregroundColor(.secondary)
@@ -168,6 +185,14 @@ struct ContentView: View {
             .navigationTitle("SIREN Emergency")
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button(action: { bluetoothManager.deregisterDevice() }) {
+                        Image(systemName: "minus.circle")
+                            .foregroundColor(.red)
+                    }
+                    .disabled(!bluetoothManager.isConnected || bluetoothManager.showRegistrationButton)
+                }
+
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button(action: { showingShareSheet = true }) {
                         Image(systemName: "square.and.arrow.up")
@@ -183,6 +208,9 @@ struct ContentView: View {
             }
             .sheet(item: $selectedContact) { contact in
                 ContactDetailView(contact: contact)
+            }
+            .sheet(isPresented: $showingRegistrationForm) {
+                DeviceRegistrationView(bluetoothManager: bluetoothManager)
             }
         }
         .onAppear {
