@@ -6,6 +6,11 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		5E1A0C0E0000000000000004 /* RingCore in Frameworks */ = {isa = PBXBuildFile; productRef = 5E1A0C0E0000000000000002 /* RingCore */; };
+		5E1A0C0E0000000000000005 /* Faults in Frameworks */ = {isa = PBXBuildFile; productRef = 5E1A0C0E0000000000000003 /* Faults */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		E76D345E2E5BC35700D5827E /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -53,6 +58,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				5E1A0C0E0000000000000004 /* RingCore in Frameworks */,
+				5E1A0C0E0000000000000005 /* Faults in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -114,6 +121,8 @@
 			);
 			name = "Siren Ring";
 			packageProductDependencies = (
+				5E1A0C0E0000000000000002 /* RingCore */,
+				5E1A0C0E0000000000000003 /* Faults */,
 			);
 			productName = "Siren Ring";
 			productReference = E76D34502E5BC35600D5827E /* Siren Ring.app */;
@@ -197,6 +206,9 @@
 			);
 			mainGroup = E76D34472E5BC35600D5827E;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				5E1A0C0E0000000000000001 /* XCLocalSwiftPackageReference "../RingCore" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = E76D34512E5BC35600D5827E /* Products */;
 			projectDirPath = "";
@@ -573,6 +585,24 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		5E1A0C0E0000000000000001 /* XCLocalSwiftPackageReference "../RingCore" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ../RingCore;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		5E1A0C0E0000000000000002 /* RingCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = RingCore;
+		};
+		5E1A0C0E0000000000000003 /* Faults */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = Faults;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = E76D34482E5BC35600D5827E /* Project object */;
 }
