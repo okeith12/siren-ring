@@ -1,27 +1,22 @@
 import Foundation
+import RingCore
 
 /// RingRegistration registers a ring and its owner with the SIREN server.
 struct RingRegistration: RingRegistering {
-    static let url = URL(string: "http://192.168.1.6:8080/api/register-device")
+    let server: ServerLink
+
+    /// init takes the link to the server; tests hand it a fake.
+    init(server: ServerLink = SirenServer()) {
+        self.server = server
+    }
 
     /// register posts the ring, its owner and this phone's push token; done gets true only for a 200.
     func register(sirenId: String, user: String, name: String, done: @escaping (Bool) -> Void) {
-        let body: [String: String] = [
-            "device_id": sirenId,
-            "user_id": user.isEmpty ? "Default User" : user,
-            "device_name": name.isEmpty ? "SIREN Ring" : name,
-            "apns_token": NotificationManager.shared.deviceToken ?? "",
-        ]
-        guard let url = Self.url, let json = try? JSONSerialization.data(withJSONObject: body) else {
-            return done(false)
-        }
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.httpBody = json
-        URLSession.shared.dataTask(with: request) { _, response, _ in
-            let ok = (response as? HTTPURLResponse)?.statusCode == 200
-            DispatchQueue.main.async { done(ok) }
-        }.resume()
+        let registration = Registration(
+            deviceId: sirenId, userId: user.isEmpty ? "Default User" : user,
+            deviceName: name.isEmpty ? "SIREN Ring" : name,
+            apnsToken: NotificationManager.shared.deviceToken ?? "")
+        guard let body = ServerWire.body(registration) else { return done(false) }
+        server.send("/api/register-device", body) { status, _ in done(status == 200) }
     }
 }

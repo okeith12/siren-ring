@@ -16,26 +16,13 @@ struct AddContactView: View {
         case app = "SIREN App Code"
     }
     
+    /// body is the header, the form for the picked method, and help on both methods.
     var body: some View {
         NavigationView {
             VStack(spacing: 30) {
-                VStack(spacing: 15) {
-                    Image(systemName: "person.badge.plus")
-                        .font(.system(size: 60))
-                        .foregroundColor(.blue)
-                    
-                    Text("Add Emergency Contact")
-                        .font(.title2)
-                        .fontWeight(.bold)
-                    
-                    Text("Add someone to receive your emergency alerts")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                        .multilineTextAlignment(.center)
-                }
+                AddContactHeader()
                 
                 VStack(spacing: 20) {
-                    // Contact Name (only show for phone method)
                     if selectedMethod == .phone {
                         VStack(alignment: .leading, spacing: 8) {
                             Text("Contact Name")
@@ -46,7 +33,6 @@ struct AddContactView: View {
                         }
                     }
                     
-                    // Contact Method Picker
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Contact Method")
                             .font(.headline)
@@ -59,7 +45,6 @@ struct AddContactView: View {
                         .pickerStyle(.segmented)
                     }
                     
-                    // Contact Information Input
                     if selectedMethod == .phone {
                         VStack(alignment: .leading, spacing: 8) {
                             Text("Phone Number")
@@ -70,22 +55,7 @@ struct AddContactView: View {
                                 .keyboardType(.phonePad)
                         }
                     } else {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("Authentication Code")
-                                .font(.headline)
-                            
-                            TextField("000000", text: $authCode)
-                                .font(.system(size: 24, weight: .medium, design: .monospaced))
-                                .textFieldStyle(.roundedBorder)
-                                .keyboardType(.numberPad)
-                                .textCase(.uppercase)
-                                .multilineTextAlignment(.center)
-                                .onChange(of: authCode) { _, newValue in
-                                    if newValue.count > 6 {
-                                        authCode = String(newValue.prefix(6))
-                                    }
-                                }
-                        }
+                        CodeField(code: $authCode)
                     }
                     
                     Button("Add Contact") {
@@ -101,30 +71,7 @@ struct AddContactView: View {
                     }
                 }
                 
-                // Instructions
-                VStack(spacing: 10) {
-                    Text("Contact Methods:")
-                        .font(.headline)
-                    
-                    VStack(alignment: .leading, spacing: 8) {
-                        Label("Phone: Receives SMS emergency alerts", systemImage: "phone.fill")
-                            .foregroundColor(.orange)
-                        Label("App Code: Full SIREN app integration", systemImage: "checkmark.circle.fill")
-                            .foregroundColor(.green)
-                        
-                        if selectedMethod == .app {
-                            Divider()
-                            Label("Ask them to open SIREN app", systemImage: "1.circle")
-                            Label("They tap 'Share Contact Info'", systemImage: "2.circle")
-                            Label("Enter their 6-digit code above", systemImage: "3.circle")
-                        }
-                    }
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
-                }
-                .padding()
-                .background(Color(.systemGray6))
-                .cornerRadius(15)
+                ContactMethodsHelp(byCode: selectedMethod == .app)
                 
                 Spacer()
             }
@@ -144,6 +91,7 @@ struct AddContactView: View {
         }
     }
     
+    /// isFormValid needs a name and number for a phone contact, or a six-digit code.
     private func isFormValid() -> Bool {
         if selectedMethod == .phone {
             return !contactName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
@@ -153,6 +101,7 @@ struct AddContactView: View {
         }
     }
     
+    /// addContact adds the contact by the picked method.
     private func addContact() {
         isLoading = true
         
@@ -163,42 +112,29 @@ struct AddContactView: View {
         }
     }
     
+    /// addPhoneContact keeps a contact reached by phone on this phone.
     private func addPhoneContact() {
         let contact = EmergencyContact(name: contactName.trimmingCharacters(in: .whitespacesAndNewlines), 
                                      phoneNumber: phoneNumber.trimmingCharacters(in: .whitespacesAndNewlines))
         
-        // Add to local storage
         EmergencyManager.shared.addEmergencyContact(contact)
-        
-        // TODO: Also send to Go server for backup
-        // ContactManager.addContactToServer(contact) { success in ... }
         
         isLoading = false
         presentationMode.wrappedValue.dismiss()
     }
     
+    /// addAppContact finds the contact the code belongs to; only a vetted answer is kept.
     private func addAppContact() {
-        ContactManager.lookupContactByCode(authCode) { contactInfo in
-            guard let info = contactInfo else {
-                DispatchQueue.main.async {
-                    self.isLoading = false
-                    self.errorMessage = "Code not found or expired. Please ask your contact to generate a new code."
-                    self.showingError = true
-                }
-                return
+        ContactManager.lookup(authCode) { card in
+            isLoading = false
+            guard let card else {
+                errorMessage = "Code not found or expired. Please ask your contact to generate a new code."
+                return showingError = true
             }
-
-            let contact = EmergencyContact(
-                name: info.name,
-                deviceID: info.deviceID,
-                phoneNumber: self.phoneNumber.isEmpty ? nil : self.phoneNumber
-            )
-
-            DispatchQueue.main.async {
-                EmergencyManager.shared.addEmergencyContact(contact)
-                self.isLoading = false
-                self.presentationMode.wrappedValue.dismiss()
-            }
+            EmergencyManager.shared.addEmergencyContact(EmergencyContact(
+                name: card.name, deviceID: card.sirenId,
+                phoneNumber: phoneNumber.isEmpty ? nil : phoneNumber))
+            presentationMode.wrappedValue.dismiss()
         }
     }
 }
