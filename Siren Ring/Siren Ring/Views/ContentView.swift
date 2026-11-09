@@ -21,6 +21,9 @@ struct ContentView: View {
                                    showingContactsSheet: $showingContactsSheet,
                                    selectedContact: $selectedContact)
                 Spacer()
+#if DEBUG
+                if RingParts.pretend { SimRingPanel(ring: SimRing.shared) }
+#endif
             }
             .navigationTitle("SIREN Emergency")
             .navigationBarTitleDisplayMode(.large)
@@ -38,15 +41,18 @@ struct ContentView: View {
         }
     }
 
-    /// toolbar is deregister on the left, once a registered ring is connected, and share on the right.
+    /// toolbar is deregister on the left, shown only while a registered ring is connected so it
+    /// never looks tappable when it cannot act, and share on the right.
     @ToolbarContentBuilder
     private var toolbar: some ToolbarContent {
-        ToolbarItem(placement: .navigationBarLeading) {
-            Button(action: { bluetoothManager.deregisterDevice() }) {
-                Image(systemName: "minus.circle")
-                    .foregroundColor(.red)
+        if bluetoothManager.ringReady && !bluetoothManager.showRegistrationButton {
+            ToolbarItem(placement: .navigationBarLeading) {
+                Button(action: { bluetoothManager.deregisterDevice() }) {
+                    Image(systemName: "minus.circle")
+                        .foregroundColor(.red)
+                }
+                .accessibilityLabel("Deregister")
             }
-            .disabled(!bluetoothManager.isConnected || bluetoothManager.showRegistrationButton)
         }
         ToolbarItem(placement: .navigationBarTrailing) {
             Button(action: { showingShareSheet = true }) {

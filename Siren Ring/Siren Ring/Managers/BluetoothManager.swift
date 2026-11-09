@@ -5,10 +5,11 @@ import RingCore
 /// BluetoothManager is the app's view of its ring: everything the radio hears goes to RingGate,
 /// and the app acts only on the gate's verdict.
 final class BluetoothManager: NSObject, ObservableObject, RingRadioEvents {
-    static let shared = BluetoothManager(radio: RingLink(), alerts: RingAlerts(),
-                                         registration: RingRegistration(), store: .standard)
+    static let shared = BluetoothManager(radio: RingParts.radio, alerts: RingAlerts(),
+                                         registration: RingParts.registration, store: .standard)
 
     @Published var isConnected = false
+    @Published var ringReady = false  // only the ring RingGate proved is ours
     @Published var connectionStatus = "Disconnected"
     @Published var emergencyActive = false
     @Published var lastAlert = "No alerts"
@@ -76,12 +77,14 @@ final class BluetoothManager: NSObject, ObservableObject, RingRadioEvents {
     func linked() {
         gate.connected()
         isConnected = true
+        ringReady = false
         connectionStatus = "Connected - checking ring"
     }
 
     /// lost does what the gate says once a link is gone: reconnect ours, look again, or stay.
     func lost(userLeft: Bool) {
         isConnected = false
+        ringReady = false
         connectionStatus = "Disconnected"
         switch gate.dropped(userLeft: userLeft) {
         case .reconnect: radio.reconnect()

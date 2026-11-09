@@ -1,15 +1,15 @@
 import SwiftUI
 
-/// RingStatusView shows whether the ring is connected and whether its alarm is sounding.
+/// RingStatusView shows whether the proven ring is there and whether its alarm is sounding.
 struct RingStatusView: View {
     @ObservedObject var bluetoothManager: BluetoothManager
 
     /// body is the connection badge, then the emergency banner and the last alert.
     var body: some View {
         VStack {
-            Image(systemName: bluetoothManager.isConnected ? "checkmark.circle.fill" : "xmark.circle.fill")
+            Image(systemName: bluetoothManager.ringReady ? "checkmark.circle.fill" : "xmark.circle.fill")
                 .font(.system(size: 60))
-                .foregroundColor(bluetoothManager.isConnected ? .green : .red)
+                .foregroundColor(bluetoothManager.ringReady ? .green : .red)
             Text("SIREN Ring")
                 .font(.title2)
                 .fontWeight(.bold)

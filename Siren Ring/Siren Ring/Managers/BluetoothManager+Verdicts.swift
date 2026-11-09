@@ -6,6 +6,7 @@ extension BluetoothManager {
     /// show marks the proven ring as ours, offering Register again if it says it is not.
     func show(ours sirenId: String, registered: Bool) {
         deviceUUID = sirenId
+        ringReady = true
         showRegistrationButton = !registered
         connectionStatus = "My SIREN Ring ready"
     }

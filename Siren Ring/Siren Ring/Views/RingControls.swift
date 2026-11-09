@@ -6,9 +6,10 @@ struct RingControls: View {
     @ObservedObject var bluetoothManager: BluetoothManager
     @Binding var showingRegistrationForm: Bool
 
-    /// ready is true once a registered ring is connected, which turns Scan into Manual Emergency.
+    /// ready is true once our registered ring has proven itself, which turns Scan into Manual
+    /// Emergency.
     private var ready: Bool {
-        bluetoothManager.isConnected && !bluetoothManager.showRegistrationButton
+        bluetoothManager.ringReady && !bluetoothManager.showRegistrationButton
     }
 
     /// body picks the button for where the ring stands.

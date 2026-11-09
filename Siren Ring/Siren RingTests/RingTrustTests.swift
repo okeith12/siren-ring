@@ -104,3 +104,17 @@ import Testing
     b.manager.alertFailed()
     #expect(b.manager.faultCount == 1)
 }
+
+/// A ring is shown ready only once it proves it is ours: not while it is checked, not when it
+/// is not ready, and not after it drops.
+@Test func only_the_proven_ring_is_shown_ready() throws {
+    let b = try Bench(paired: ours)
+    b.manager.linked()
+    #expect(!b.manager.ringReady)
+    b.manager.heardInfo(Data("notready,false".utf8))
+    #expect(!b.manager.ringReady)
+    b.connect("\(ours),true")
+    #expect(b.manager.ringReady)
+    b.manager.lost(userLeft: false)
+    #expect(!b.manager.ringReady)
+}
