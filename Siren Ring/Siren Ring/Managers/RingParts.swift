@@ -4,7 +4,7 @@ import Foundation
 /// gets the pretend ring, and the pretend server too unless SIREN_SERVER points at a real one,
 /// so the app can be walked through with no ring; a release build has only the real ones.
 enum RingParts {
-    static let home = "http://192.168.1.6:8080"
+    static let home = "http://Perco-2.local:8080"  // the Mac running sirenserv, by its Bonjour name
 #if DEBUG
     static let env = ProcessInfo.processInfo.environment
     static let pretend = env["SIREN_ENV"] == "sim"
