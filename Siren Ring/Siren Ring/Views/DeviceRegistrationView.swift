@@ -40,7 +40,7 @@ struct DeviceRegistrationView: View {
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Your Name")
                             .font(.headline)
-                        TextField("Enter your name (e.g., Larry Sam)", text: $bluetoothManager.userName)
+                        TextField("Enter your name (e.g., Test Owner)", text: $bluetoothManager.userName)
                             .textFieldStyle(RoundedBorderTextFieldStyle())
                             .keyboardType(.default)
                     }
