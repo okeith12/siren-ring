@@ -10,7 +10,7 @@ struct ContactDetailView: View {
                 VStack(spacing: 15) {
                     Image(systemName: contact.contactType.iconName)
                         .font(.system(size: 60))
-                        .foregroundColor(colorForContactType(contact.contactType))
+                        .foregroundColor(contact.contactType.color)
 
                     Text(contact.name)
                         .font(.title)
@@ -56,19 +56,6 @@ struct ContactDetailView: View {
                     }
                 }
             }
-        }
-    }
-
-    private func colorForContactType(_ contactType: ContactType) -> Color {
-        switch contactType {
-        case .appConnected:
-            return .green
-        case .appInstalled:
-            return .blue
-        case .phoneOnly:
-            return .orange
-        case .unknown:
-            return .gray
         }
     }
 }

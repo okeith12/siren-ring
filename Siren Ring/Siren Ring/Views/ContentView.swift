@@ -1,5 +1,4 @@
 import SwiftUI
-import UserNotifications
 
 /// Main view displaying SIREN Ring connection status and emergency contacts management
 struct ContentView: View {
@@ -9,241 +8,57 @@ struct ContentView: View {
     @State private var showingShareSheet = false
     @State private var selectedContact: EmergencyContact?
     @State private var showingRegistrationForm = false
-    
+
+    /// body stacks the ring's status, its main button and the contacts, with the sheets they open.
     var body: some View {
         NavigationView {
             VStack(spacing: 20) {
-                // SIREN Ring Status
-                VStack {
-                    Image(systemName: bluetoothManager.isConnected ? "checkmark.circle.fill" : "xmark.circle.fill")
-                        .font(.system(size: 60))
-                        .foregroundColor(bluetoothManager.isConnected ? .green : .red)
-                    
-                    Text("SIREN Ring")
-                        .font(.title2)
-                        .fontWeight(.bold)
-                    
-                    Text(bluetoothManager.connectionStatus)
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                }
-                .padding()
-                
-                // Emergency Status
-                VStack {
-                    if bluetoothManager.emergencyActive {
-                        Label("EMERGENCY ACTIVE", systemImage: "exclamationmark.triangle.fill")
-                            .font(.headline)
-                            .foregroundColor(.red)
-                            .padding()
-                            .background(Color.red.opacity(0.1))
-                            .cornerRadius(10)
-                    }
-                    
-                    Text(bluetoothManager.lastAlert)
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                        .multilineTextAlignment(.center)
-                }
-                .padding()
-                
-                // Connection Controls
-                VStack {
-                    if bluetoothManager.showRegistrationButton {
-                        Button(action: { showingRegistrationForm = true }) {
-                            Label("Register", systemImage: "plus.circle")
-                                .padding()
-                                .frame(maxWidth: .infinity)
-                                .background(Color.orange)
-                                .foregroundColor(.white)
-                                .cornerRadius(10)
-                        }
-                    } else {
-                        Button(action: {
-                            if bluetoothManager.isConnected && !bluetoothManager.showRegistrationButton {
-                                // Device is connected and registered - trigger manual emergency
-                                EmergencyManager.shared.sendEmergencyAlert()
-                            } else {
-                                // Device not connected/registered - scan for devices
-                                bluetoothManager.startScanning()
-                            }
-                        }) {
-                            if bluetoothManager.isConnected && !bluetoothManager.showRegistrationButton {
-                                Label("Manual Emergency", systemImage: "exclamationmark.triangle.fill")
-                                    .padding()
-                                    .frame(maxWidth: .infinity)
-                                    .background(Color.red)
-                                    .foregroundColor(.white)
-                                    .cornerRadius(10)
-                            } else {
-                                Label("Scan", systemImage: "magnifyingglass")
-                                    .padding()
-                                    .frame(maxWidth: .infinity)
-                                    .background(Color.blue)
-                                    .foregroundColor(.white)
-                                    .cornerRadius(10)
-                            }
-                        }
-                    }
-                }
-                .padding(.horizontal)
-                
+                RingStatusView(bluetoothManager: bluetoothManager)
+                RingControls(bluetoothManager: bluetoothManager,
+                             showingRegistrationForm: $showingRegistrationForm)
                 Spacer()
-                
-                // Emergency Contacts Section
-                VStack(alignment: .leading) {
-                    HStack {
-                        Text("Emergency Contacts")
-                            .font(.headline)
-                        Spacer()
-                        Button("Add") {
-                            showingContactsSheet = true
-                        }
-                        .buttonStyle(.borderedProminent)
-                        .controlSize(.small)
-                    }
-                    
-                    if emergencyManager.emergencyContacts.isEmpty {
-                        Text("No emergency contacts added")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    } else {
-                        ForEach(emergencyManager.emergencyContacts) { contact in
-                            Button(action: {
-                                selectedContact = contact
-                            }) {
-                                HStack {
-                                    // Contact Type Icon
-                                    VStack {
-                                        Image(systemName: contact.contactType.iconName)
-                                            .font(.title2)
-                                            .foregroundColor(colorForContactType(contact.contactType))
-                                    }
-                                    .frame(width: 30)
-
-                                    // Contact Information
-                                    VStack(alignment: .leading, spacing: 2) {
-                                        Text(contact.name)
-                                            .fontWeight(.medium)
-                                            .foregroundColor(.primary)
-
-                                        Text(contact.contactType.description)
-                                            .font(.caption)
-                                            .foregroundColor(.secondary)
-
-                                        // Show contact method details
-                                        if let phone = contact.phoneNumber {
-                                            HStack {
-                                                Image(systemName: "phone")
-                                                    .font(.caption2)
-                                                Text(phone)
-                                                    .font(.caption2)
-                                            }
-                                            .foregroundColor(.secondary)
-                                        }
-
-                                        if let deviceID = contact.deviceID {
-                                            HStack {
-                                                Image(systemName: "app.badge")
-                                                    .font(.caption2)
-                                                Text("Device: \(String(deviceID.prefix(8)))...")
-                                                    .font(.caption2)
-                                            }
-                                            .foregroundColor(.secondary)
-                                        }
-                                    }
-
-                                    Spacer()
-
-                                    // Connection Status
-                                    VStack {
-                                        if contact.hasApp {
-                                            Image(systemName: contact.isConnected ? "wifi" : "wifi.slash")
-                                                .font(.caption)
-                                                .foregroundColor(contact.isConnected ? .green : .orange)
-                                        }
-                                    }
-
-                                    // Chevron indicator
-                                    Image(systemName: "chevron.right")
-                                        .font(.caption)
-                                        .foregroundColor(.secondary)
-                                }
-                                .padding(.vertical, 8)
-                            }
-                        }
-                        .onDelete(perform: deleteContact)
-                    }
-                }
-                .padding()
-                .background(Color(.systemGray6))
-                .cornerRadius(10)
-                .padding(.horizontal)
-                
+                ContactListSection(emergencyManager: emergencyManager,
+                                   showingContactsSheet: $showingContactsSheet,
+                                   selectedContact: $selectedContact)
                 Spacer()
+#if DEBUG
+                if RingParts.pretend { SimRingPanel(ring: SimRing.shared) }
+#endif
             }
             .navigationTitle("SIREN Emergency")
             .navigationBarTitleDisplayMode(.large)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button(action: { bluetoothManager.deregisterDevice() }) {
-                        Image(systemName: "minus.circle")
-                            .foregroundColor(.red)
-                    }
-                    .disabled(!bluetoothManager.isConnected || bluetoothManager.showRegistrationButton)
-                }
-
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(action: { showingShareSheet = true }) {
-                        Image(systemName: "square.and.arrow.up")
-                            .foregroundColor(.blue)
-                    }
-                }
-            }
-            .sheet(isPresented: $showingContactsSheet) {
-                AddContactView()
-            }
-            .sheet(isPresented: $showingShareSheet) {
-                ShareContactView()
-            }
-            .sheet(item: $selectedContact) { contact in
-                ContactDetailView(contact: contact)
-            }
+            .toolbar { toolbar }
+            .sheet(isPresented: $showingContactsSheet) { AddContactView() }
+            .sheet(isPresented: $showingShareSheet) { ShareContactView() }
+            .sheet(item: $selectedContact) { contact in ContactDetailView(contact: contact) }
             .sheet(isPresented: $showingRegistrationForm) {
                 DeviceRegistrationView(bluetoothManager: bluetoothManager)
             }
-        }
-        .onAppear {
-            requestNotificationPermission()
-        }
-    }
-    
-    /// Requests notification permission from the user
-    private func requestNotificationPermission() {
-        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { _, _ in }
-    }
-    
-    /// Deletes emergency contact at specified index
-    /// - Parameter offsets: IndexSet containing indices to delete
-    private func deleteContact(at offsets: IndexSet) {
-        for index in offsets {
-            emergencyManager.removeEmergencyContact(at: index)
+            .sheet(isPresented: Binding(get: { bluetoothManager.newRing != nil },
+                                        set: { if !$0 { bluetoothManager.newRing = nil } })) {
+                RingConnectedCard(sirenId: bluetoothManager.newRing ?? "")
+            }
         }
     }
-    
-    /// Returns SwiftUI Color for contact type
-    /// - Parameter contactType: The contact type
-    /// - Returns: Appropriate Color for the contact type
-    private func colorForContactType(_ contactType: ContactType) -> Color {
-        switch contactType {
-        case .appConnected:
-            return .green
-        case .appInstalled:
-            return .blue
-        case .phoneOnly:
-            return .orange
-        case .unknown:
-            return .gray
+
+    /// toolbar is deregister on the left, shown only while a registered ring is connected so it
+    /// never looks tappable when it cannot act, and share on the right.
+    @ToolbarContentBuilder
+    private var toolbar: some ToolbarContent {
+        if bluetoothManager.ringReady && !bluetoothManager.showRegistrationButton {
+            ToolbarItem(placement: .navigationBarLeading) {
+                Button(action: { bluetoothManager.deregisterDevice() }) {
+                    Image(systemName: "minus.circle")
+                        .foregroundColor(.red)
+                }
+                .accessibilityLabel("Deregister")
+            }
+        }
+        ToolbarItem(placement: .navigationBarTrailing) {
+            Button(action: { showingShareSheet = true }) {
+                Image(systemName: "square.and.arrow.up")
+                    .foregroundColor(.blue)
+            }
         }
     }
 }

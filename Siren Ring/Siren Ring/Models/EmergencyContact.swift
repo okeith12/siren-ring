@@ -5,7 +5,7 @@ struct EmergencyContact: Identifiable, Codable {
     let id: UUID
     let name: String
     let phoneNumber: String?     // For SMS fallback
-    let deviceID: String?        // SIREN Ring device ID (13-character UUID)
+    let deviceID: String?        // SIREN Ring Siren ID (14 lowercase hex)
     let hasApp: Bool            // Whether they have SIREN app installed
     let isConnected: Bool       // Whether they're connected via app
     
@@ -38,7 +38,7 @@ struct EmergencyContact: Identifiable, Codable {
     /// Initializes an emergency contact with SIREN Ring device connection
     /// - Parameters:
     ///   - name: Full name of the emergency contact
-    ///   - deviceID: SIREN Ring device ID (13-character UUID)
+    ///   - deviceID: SIREN Ring Siren ID (14 lowercase hex)
     ///   - phoneNumber: Optional phone number for SMS fallback
     init(name: String, deviceID: String, phoneNumber: String? = nil) {
         self.id = UUID()
@@ -67,19 +67,6 @@ enum ContactType {
             return "phone.fill"
         case .unknown:
             return "questionmark.circle"
-        }
-    }
-    
-    var iconColor: String {
-        switch self {
-        case .appConnected:
-            return "green"
-        case .appInstalled:
-            return "blue"
-        case .phoneOnly:
-            return "orange"
-        case .unknown:
-            return "gray"
         }
     }
     
