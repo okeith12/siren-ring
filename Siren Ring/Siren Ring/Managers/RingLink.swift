@@ -65,8 +65,8 @@ final class RingLink: NSObject, RingRadio {
     }
 
 #if DEBUG
-    /// sound writes "sound", which the ring obeys from the phone listening for its alarm; the
-    /// alarm then comes back as an alert, as a press would.
+    /// sound writes "sound", which makes the ring sound its alarm; the ring then sends the
+    /// alarm back as an alert, as a press would.
     func sound() {
         guard let ring, let info else { return }
         ring.writeValue(Data("sound".utf8), for: info, type: .withResponse)
