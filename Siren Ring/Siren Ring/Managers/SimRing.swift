@@ -70,6 +70,9 @@ final class SimRing: RingRadio {
         post { [weak self] in self?.events?.heardAlert(Data([on ? 1 : 0])) }
     }
 
+    /// sound is the app asking the ring to sound, which comes back as the ring's own alarm.
+    func sound() { press(true) }
+
     /// away takes the ring out of range, or brings it back to whatever the app is waiting with.
     func away(_ out: Bool) {
         gone = out

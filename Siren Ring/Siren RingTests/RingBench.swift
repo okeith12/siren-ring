@@ -28,6 +28,8 @@ final class FakeRadio: RingRadio {
     func listen() { listens += 1 }
     /// tellRegistered keeps each answer written to the ring.
     func tellRegistered(_ registered: Bool) { told.append(registered) }
+    /// sound is never asked of the radio by BluetoothManager; only the debug button calls it.
+    func sound() {}
 }
 
 /// FakeAlerts records what would have reached the family and the user.

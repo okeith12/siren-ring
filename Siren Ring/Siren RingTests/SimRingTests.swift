@@ -89,4 +89,23 @@ func sim() -> (SimRing, Heard) {
     ring.scan()
     #expect(heard.said.last == "info \(ours),true")
 }
+
+/// The app sounding the ring comes back as the ring's own alarm, as the debug ring sends it.
+@Test func sounding_the_ring_comes_back_as_its_alarm() {
+    let (ring, heard) = sim()
+    ring.place("\(ours),true")
+    ring.scan()
+    ring.listen()
+    ring.sound()
+    #expect(heard.said.last == "alert [1]")
+}
+
+/// A ring the app is not listening to cannot be heard sounding, so nothing comes back.
+@Test func sounding_a_ring_not_listened_to_sends_nothing_back() {
+    let (ring, heard) = sim()
+    ring.place("\(ours),true")
+    ring.scan()
+    ring.sound()
+    #expect(!heard.said.contains("alert [1]"))
+}
 #endif

@@ -58,11 +58,20 @@ final class RingLink: NSObject, RingRadio {
         ring.setNotifyValue(true, for: alerts)
     }
 
-    /// tellRegistered writes exactly "true" or "false", the only words the ring accepts.
+    /// tellRegistered writes exactly "true" or "false", the only registration answers the ring accepts.
     func tellRegistered(_ registered: Bool) {
         guard let ring, let info else { return }
         ring.writeValue(Data((registered ? "true" : "false").utf8), for: info, type: .withResponse)
     }
+
+#if DEBUG
+    /// sound writes "sound", which the ring obeys from the phone listening for its alarm; the
+    /// alarm then comes back as an alert, as a press would.
+    func sound() {
+        guard let ring, let info else { return }
+        ring.writeValue(Data("sound".utf8), for: info, type: .withResponse)
+    }
+#endif
 
     /// forgetLink clears what belonged to the last connection, keeping the ring to reconnect.
     func forgetLink() {
