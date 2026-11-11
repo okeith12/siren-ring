@@ -23,6 +23,11 @@ struct RingControls: View {
                 Button(action: { EmergencyManager.shared.sendEmergencyAlert() }) {
                     wide(Label("Manual Emergency", systemImage: "exclamationmark.triangle.fill"), .red)
                 }
+#if DEBUG
+                Button(action: { RingParts.radio.sound() }) {
+                    wide(Label("Sound Ring", systemImage: "speaker.wave.3.fill"), .purple)
+                }
+#endif
             } else {
                 Button(action: { bluetoothManager.startScanning() }) {
                     wide(Label("Scan", systemImage: "magnifyingglass"), .blue)

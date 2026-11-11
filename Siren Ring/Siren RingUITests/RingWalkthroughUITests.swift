@@ -98,6 +98,15 @@ final class RingWalkthroughUITests: XCTestCase {
         XCTAssert(app.staticTexts["Disconnected"].waitForExistence(timeout: 5))
     }
 
+    /// Sound Ring makes the ring sound, and its alarm comes back like a press on the ring.
+    @MainActor
+    func test_sound_ring_raises_the_emergency_from_the_ring() {
+        connectRingA()
+        app.buttons["Sound Ring"].tap()
+        XCTAssert(app.staticTexts["EMERGENCY ACTIVE"].waitForExistence(timeout: 5))
+        shot("sounded from the app")
+    }
+
     /// The top left button deregisters the ring, which offers Register again.
     @MainActor
     func test_deregister_offers_register_again() {

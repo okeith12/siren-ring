@@ -30,6 +30,10 @@ protocol RingRadio: AnyObject {
     func listen()
     /// tellRegistered writes the registration answer to the ring.
     func tellRegistered(_ registered: Bool)
+#if DEBUG
+    /// sound asks the ring to sound, to prove the app reaches the ring.
+    func sound()
+#endif
 }
 
 /// RingAlerting is what the app does once the proven ring speaks.
