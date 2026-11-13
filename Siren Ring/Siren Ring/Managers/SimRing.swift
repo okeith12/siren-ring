@@ -14,6 +14,8 @@ final class SimRing: RingRadio {
     private var looking = false
     private var linked = false
     private var listening = false
+    private var alarmOn = false
+    private var appRaised = false
     private var refused: [String] = []
 
     /// init takes how events are delivered: later on the main queue, as CoreBluetooth does, so a
@@ -66,12 +68,18 @@ final class SimRing: RingRadio {
 
     /// press sends the alarm on or off, only to an app that subscribed.
     func press(_ on: Bool) {
+        alarmOn = on
+        appRaised = false
         guard listening else { return }
         post { [weak self] in self?.events?.heardAlert(Data([on ? 1 : 0])) }
     }
 
-    /// sound is the app asking the ring to sound, which comes back as the ring's own alarm.
-    func sound() { press(true) }
+    /// sound toggles only an alarm the app started, as the real ring does.
+    func sound() {
+        guard listening, !alarmOn || appRaised else { return }
+        press(!alarmOn)
+        appRaised = alarmOn
+    }
 
     /// away takes the ring out of range, or brings it back to whatever the app is waiting with.
     func away(_ out: Bool) {
