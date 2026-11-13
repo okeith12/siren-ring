@@ -5,12 +5,17 @@ import SwiftUI
 struct RingControls: View {
     @ObservedObject var bluetoothManager: BluetoothManager
     @Binding var showingRegistrationForm: Bool
+    /// appRaised is set by Start Ring, the only alarm the app may stop.
+    @State private var appRaised = false
 
     /// ready is true once our registered ring has proven itself, which turns Scan into Manual
     /// Emergency.
     private var ready: Bool {
         bluetoothManager.ringReady && !bluetoothManager.showRegistrationButton
     }
+
+    /// stopping is true while the alarm the app started is sounding.
+    private var stopping: Bool { bluetoothManager.emergencyActive && appRaised }
 
     /// body picks the button for where the ring stands.
     var body: some View {
@@ -24,8 +29,15 @@ struct RingControls: View {
                     wide(Label("Manual Emergency", systemImage: "exclamationmark.triangle.fill"), .red)
                 }
 #if DEBUG
-                Button(action: { RingParts.radio.sound() }) {
-                    wide(Label("Sound Ring", systemImage: "speaker.wave.3.fill"), .purple)
+                Button(action: {
+                    if !bluetoothManager.emergencyActive { appRaised = true }
+                    RingParts.radio.sound()
+                }) {
+                    wide(Label(stopping ? "Stop Ring" : "Start Ring",
+                               systemImage: "hand.tap.fill"), .purple)
+                }
+                .onChange(of: bluetoothManager.emergencyActive) { _, on in
+                    if !on { appRaised = false }
                 }
 #endif
             } else {

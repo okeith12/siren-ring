@@ -31,7 +31,7 @@ protocol RingRadio: AnyObject {
     /// tellRegistered writes the registration answer to the ring.
     func tellRegistered(_ registered: Bool)
 #if DEBUG
-    /// sound asks the ring to sound, to prove the app reaches the ring.
+    /// sound toggles an alarm the app raised, to prove the app reaches the ring.
     func sound()
 #endif
 }

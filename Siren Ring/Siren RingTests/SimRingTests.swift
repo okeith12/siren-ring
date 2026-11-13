@@ -100,6 +100,28 @@ func sim() -> (SimRing, Heard) {
     #expect(heard.said.last == "alert [1]")
 }
 
+/// A second sound stops the alarm the app started.
+@Test func sounding_again_stops_the_alarm_the_app_raised() {
+    let (ring, heard) = sim()
+    ring.place("\(ours),true")
+    ring.scan()
+    ring.listen()
+    ring.sound()
+    ring.sound()
+    #expect(heard.said.last == "alert [0]")
+}
+
+/// The app never silences an alarm the wearer started.
+@Test func sounding_never_stops_an_alarm_the_wearer_raised() {
+    let (ring, heard) = sim()
+    ring.place("\(ours),true")
+    ring.scan()
+    ring.listen()
+    ring.press(true)
+    ring.sound()
+    #expect(heard.said.last == "alert [1]")
+}
+
 /// A ring the app is not listening to cannot be heard sounding, so nothing comes back.
 @Test func sounding_a_ring_not_listened_to_sends_nothing_back() {
     let (ring, heard) = sim()
